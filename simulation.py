@@ -7,12 +7,11 @@ from simulation_utils import *
 
 
 def simulate_epidemic():
-    print("Initialization...")
     # initialization
-    global quarantine
     random.seed(123)
     N = 20
-    tmax = 364
+    quarantine = np.zeros([N, 1])
+    tmax = 365
     nruns = 1
     # variable associated with SIR (susceptible, infected, recovered)
     # probability to infect
@@ -27,7 +26,7 @@ def simulate_epidemic():
     # one column for each disease state (S, I_A, I_S, R)
     avrg_disease_vs_t = np.zeros((tmax, 4))
 
-    for run in range(1, nruns + 1):
+    for run in range(0, nruns):
         print(run)
         opinion_network = nx.barabasi_albert_graph(n=N, m=8)
         disease_network = nx.barabasi_albert_graph(n=N, m=3)
@@ -41,12 +40,14 @@ def simulate_epidemic():
         while t < tmax:
             p = increase_opinion(t)
             q = decrease_opinion(t)
-            print(opinion)
             opinion_aux = update_opinions(
-                disease, opinion, N, opinion_network, disease_network, p, q
+                disease, opinion, N, opinion_network, disease_network, p, q, quarantine
             )
+
+            # liberate the quarantine if necessary
             if t <= 15 or t >= 120:
                 quarantine = np.zeros((N, 1))
+
             [disease_aux, self_timer] = update_disease(
                 disease,
                 opinion,
@@ -56,13 +57,15 @@ def simulate_epidemic():
                 beta,
                 recovery_time,
                 epsilon,
+                quarantine,
             )
+
             opinion = opinion_aux
             disease = disease_aux
             t += 1
 
-            avrg_opinion_vs_t[t, :] += count_op(opinion)
-            avrg_disease_vs_t[t, :] += count_di(disease)
+            avrg_opinion_vs_t[t - 1, :] += count_op(opinion)
+            avrg_disease_vs_t[t - 1, :] += count_di(disease)
 
         # divide by total runs for average and by N for normalization
         avrg_opinion_vs_t = avrg_opinion_vs_t / (N * nruns)
@@ -86,7 +89,7 @@ def simulate_epidemic():
         # Figure 2
         h2 = plt.figure(2)
         plt.plot(time, avrg_disease_vs_t[:, 1] + avrg_disease_vs_t[:, 2], linewidth=3)
-        plt.plot(time[locs], pks, "r*")
+        # plt.plot(time[locs], pks, "r*")
         plt.xlabel("Time (Days)")
         plt.ylabel("Population")
         plt.tick_params(direction="out", width=3)

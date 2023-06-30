@@ -24,78 +24,58 @@ def set_initial_opinion(N):
 
 
 def update_opinions(
-    old_disease, old_opinion, N, opinion_network, disease_network, p, q
+    old_disease, old_opinion, N, opinion_network, disease_network, p, q, quarantine
 ):
-    global quarantine
-
     quarantine = np.zeros((N, 1))
     new_opinion = np.zeros((N, 1))
-    c = 0.5
-    eta = 0.1
-    beta1 = 1
-    nu = -0.1
 
     for current_node_index in range(0, N):
-        print(old_opinion)
         neighbors_opinion = get_neighbors(opinion_network, current_node_index)
         neighbors_disease = get_neighbors(disease_network, current_node_index)
-        number_infected = 0
 
         # calculate the number of infected nodes around the current node
+        number_infected = 0
         for neighbor_index in neighbors_disease:
             if old_disease[neighbor_index] == 2:
                 number_infected = number_infected + 1
 
-        Itot = count_di(old_disease)[2]
-        Pne = -1 * number_infected
-        Ppo = nu
-        x = Ppo - Pne
-        Gamma = 1 / (1 + math.exp(-beta1 * x))
+        # calculate the phi parameter
+        payoff_for = -0.1
+        payoff_against = -number_infected
+        payoff_net = payoff_for - payoff_against
+        opinion_strength = 1
+        phi = 1 / (1 + math.exp(-opinion_strength * payoff_net))
 
-        random_index = np.random.permutation(len(neighbors_opinion))[0]
-        random_neighbor = neighbors_opinion[random_index]
+        random_neighbor_index = np.random.permutation(len(neighbors_opinion))[0]
+        random_neighbor = neighbors_opinion[random_neighbor_index]
 
-        # 16 total combinations
+        # opinion exchange combinations
         if old_opinion[current_node_index] == old_opinion[random_neighbor]:
-            if old_opinion[current_node_index] < 0 and random.random() < Gamma:
+            if old_opinion[current_node_index] < 0 and random.random() < phi:
                 new_opinion[current_node_index] = 1
-            elif old_opinion[current_node_index] > 0 and random.random() < (1 - Gamma):
+            elif old_opinion[current_node_index] > 0 and random.random() < (1 - phi):
                 new_opinion[current_node_index] = -1
             else:
                 new_opinion[current_node_index] = old_opinion[current_node_index]
 
         elif old_opinion[current_node_index] < old_opinion[random_neighbor]:
-            if random.random() < (0.5 * Gamma + 0.5 * p):
+            if random.random() < (0.5 * phi + 0.5 * p):
                 new_opinion[current_node_index] = 1
             else:
                 new_opinion[current_node_index] = old_opinion[current_node_index]
 
         elif old_opinion[current_node_index] > old_opinion[random_neighbor]:
-            if random.random() < (0.5 * (1 - Gamma) + 0.5 * q):
+            if random.random() < (0.5 * (1 - phi) + 0.5 * q):
                 new_opinion[current_node_index] = -1
             else:
                 new_opinion[current_node_index] = old_opinion[current_node_index]
 
+    # update the quarantine status based on the newly formed opinions
     quarantine[new_opinion == 1] = 1
 
-
-def next(opinion):
-    if opinion == -1:
-        return 1
-    if opinion == 1:
-        return 1
-    # redundant?
+    return new_opinion
 
 
-def prev(opinion):
-    if opinion == -1:
-        return -1
-    if opinion == 1:
-        return -1
-    # redundant?
-
-
-# *** indexing might cause trouble (starting from 0 instead of 1)
 def get_neighbors(graph, node_index):
     return list(graph.neighbors(node_index))
 
@@ -116,9 +96,16 @@ def count_op(opinion):
 
 
 def update_disease(
-    old_state, opinion, N, disease_network, self_timer, beta, recovery_time, epsilon
+    old_state,
+    opinion,
+    N,
+    disease_network,
+    self_timer,
+    beta,
+    recovery_time,
+    epsilon,
+    quarantine,
 ):
-    global quarantine
     new_state = old_state
 
     list_of_infected = np.where(old_state == 2)[0]
@@ -131,7 +118,9 @@ def update_disease(
             new_state[i] = 3
 
         if quarantine[i] == 0:
-            infect_neighbor(i, disease_network, beta, old_state, new_state, self_timer)
+            infect_neighbor(
+                i, disease_network, beta, old_state, new_state, self_timer, quarantine
+            )
 
         if random.random() < epsilon:
             new_state[i] = 2
@@ -142,7 +131,9 @@ def update_disease(
     return [new_state, self_timer]
 
 
-def infect_neighbor(node, disease_network, beta, old_state, new_state, self_timer):
+def infect_neighbor(
+    node, disease_network, beta, old_state, new_state, self_timer, quarantine
+):
     neighbors = get_neighbors(node, disease_network)
     for j in range(0, len(neighbors)):
         neigh = neighbors[j]
