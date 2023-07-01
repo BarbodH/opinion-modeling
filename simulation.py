@@ -4,6 +4,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 from simulation_utils import *
+from individual import Individual
 
 
 def simulate_epidemic():
@@ -32,40 +33,31 @@ def simulate_epidemic():
         disease_network = nx.barabasi_albert_graph(n=N, m=3)
 
         t = 0
-        opinion = set_initial_opinion(N)
-        self_timer = np.zeros((N, 1))
-        disease = np.zeros((N, 1))
-        disease[np.random.randint(N)] = 1
+
+        # generate the individuals in the network
+        individuals = list()
+        for i in range(0, N):
+            individuals.append(Individual(i))
+
+        individuals[random.randint(0, N)].disease = 1
 
         while t < tmax:
             p = increase_opinion(t)
             q = decrease_opinion(t)
-            opinion_aux = update_opinions(
-                disease, opinion, N, opinion_network, disease_network, p, q, quarantine
-            )
+
+            update_opinions(individuals, opinion_network, disease_network, p, q)
 
             # liberate the quarantine if necessary
             if t <= 15 or t >= 120:
-                quarantine = np.zeros((N, 1))
+                for individual in individuals:
+                    individual.quarantine = 0
 
-            [disease_aux, self_timer] = update_disease(
-                disease,
-                opinion,
-                N,
-                disease_network,
-                self_timer,
-                beta,
-                recovery_time,
-                epsilon,
-                quarantine,
-            )
+            update_disease(individuals, disease_network, beta, recovery_time, epsilon)
 
-            opinion = opinion_aux
-            disease = disease_aux
             t += 1
 
-            avrg_opinion_vs_t[t - 1, :] += count_op(opinion)
-            avrg_disease_vs_t[t - 1, :] += count_di(disease)
+            avrg_opinion_vs_t[t - 1, :] += count_op(individuals)
+            avrg_disease_vs_t[t - 1, :] += count_di(individuals)
 
         # divide by total runs for average and by N for normalization
         avrg_opinion_vs_t = avrg_opinion_vs_t / (N * nruns)
