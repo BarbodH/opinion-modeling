@@ -10,8 +10,7 @@ from individual import Individual
 def simulate_epidemic():
     # initialization
     random.seed(123)
-    N = 20
-    quarantine = np.zeros([N, 1])
+    N = 50
     tmax = 365
     nruns = 1
     # variable associated with SIR (susceptible, infected, recovered)
@@ -27,18 +26,16 @@ def simulate_epidemic():
     # one column for each disease state (S, I_A, I_S, R)
     avrg_disease_vs_t = np.zeros((tmax, 4))
 
-    for run in range(0, nruns):
-        print(run)
+    for run in range(1, nruns + 1):
+        print("Run:", run)
         opinion_network = nx.barabasi_albert_graph(n=N, m=8)
         disease_network = nx.barabasi_albert_graph(n=N, m=3)
-
         t = 0
 
         # generate the individuals in the network
         individuals = list()
         for i in range(0, N):
             individuals.append(Individual(i))
-
         individuals[random.randint(0, N)].disease = 1
 
         while t < tmax:
@@ -56,8 +53,8 @@ def simulate_epidemic():
 
             t += 1
 
-            avrg_opinion_vs_t[t - 1, :] += count_op(individuals)
-            avrg_disease_vs_t[t - 1, :] += count_di(individuals)
+            avrg_opinion_vs_t[t - 1, :] += count_opinion_states(individuals)
+            avrg_disease_vs_t[t - 1, :] += count_disease_states(individuals)
 
         # divide by total runs for average and by N for normalization
         avrg_opinion_vs_t = avrg_opinion_vs_t / (N * nruns)
@@ -70,17 +67,17 @@ def simulate_epidemic():
         time = np.arange(1, tmax + 1).reshape(-1, 1)
 
         # Figure 1
-        h1 = plt.figure(1)
+        plt.figure(1)
         plt.rc("font", size=18)
-        plt.plot(time, avrg_opinion_vs_t, linewidth=3)
+        plt.plot(time, avrg_opinion_vs_t, linewidth=2)
         plt.xlabel("Time (Days)")
         plt.ylabel("Opinion")
         plt.tick_params(direction="out", width=3)
-        plt.legend(["-1", "+1"])
+        plt.legend(["against", "for"])
 
         # Figure 2
-        h2 = plt.figure(2)
-        plt.plot(time, avrg_disease_vs_t[:, 1] + avrg_disease_vs_t[:, 2], linewidth=3)
+        plt.figure(2)
+        plt.plot(time, avrg_disease_vs_t, linewidth=2)
         # plt.plot(time[locs], pks, "r*")
         plt.xlabel("Time (Days)")
         plt.ylabel("Population")

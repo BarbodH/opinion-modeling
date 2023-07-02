@@ -73,7 +73,7 @@ def get_neighbors(graph, node_index):
     return list(graph.neighbors(node_index))
 
 
-def count_di(individuals):
+def count_disease_states(individuals):
     total_S = sum(1 for individual in individuals if individual.disease == 0)
     total_I_A = sum(1 for individual in individuals if individual.disease == 1)
     total_I_S = sum(1 for individual in individuals if individual.disease == 2)
@@ -81,7 +81,7 @@ def count_di(individuals):
     return [total_S, total_I_A, total_I_S, total_R]
 
 
-def count_op(individuals):
+def count_opinion_states(individuals):
     total_against = sum(1 for individual in individuals if individual.opinion == -1)
     total_for = sum(1 for individual in individuals if individual.opinion == 1)
     return [total_against, total_for]
@@ -119,7 +119,7 @@ def update_disease(
             infect_neighbor(exposed_individual, individuals, disease_network, beta)
 
         if random.random() < epsilon:
-            exposed_individual.get_infected()
+            exposed_individual.show_symptoms()
 
 
 def infect_neighbor(
